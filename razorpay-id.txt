@@ -1,0 +1,21 @@
+
+Click Generate Test Key. You will get a Key Id and a Key Secret.
+
+Test API Key - rzp_test_SgvTgZz9wBKVoQ
+
+rzp_test_SgvTgZz9wBKVoQ
+
+
+Test Key Secret - C596bzKItPRLND6pfh5fQs4z 
+
+C596bzKItPRLND6pfh5fQs4z
+
+Detail -- for razorpay payment process - 
+
+phone no. -- 987654321      919876543213
+
+Test Cards. - 4100 2800 0000 1007
+
+
+CVV - 123
+Expiry Date - 8/2030

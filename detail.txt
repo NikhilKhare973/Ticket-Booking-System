@@ -1,0 +1,34 @@
+run -- npm run start:dev 
+
+http://localhost:3000/
+
+step up - Docker, Swagger
+
+- 
+
+@nestjs/typeorm & typeorm: The tools that map our TypeScript code to database tables.
+
+pg: The official Postgres driver that actually talks to the database.
+
+We gave TypeORM the exact same credentials we set up in our docker-compose.yml file (admin, password123, ticket_booking).
+
+synchronize: true: This is a magic feature for development. When we create our User or Event models in the next step, TypeORM will automatically write and execute the CREATE TABLE SQL commands for us in the background. (Note: You turn this off when launching a real app to the public, but it's perfect for building locally).
+
+     -- The Final Project Review
+With this step complete, your application now covers everything from your notebook:
+
+ - Users (Customers and Admins)
+
+ - Events (Music or Movie bookings)
+
+ - Seats (Specific allocations like A1, A2)
+
+ - Bookings (Connecting everything together)
+
+ - Payments (Transaction history)
+
+Create a Booking for a seat.
+
+ Use that bookingId to create a Payment.
+
+ Run GET /payments and see the complete "receipt" showing who paid, for what concert, and which seat they got.

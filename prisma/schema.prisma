@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  user
+  admin
+}
+
+model User {
+  id       Int      @id @default(autoincrement()) // Primary Key
+  name     String
+  email    String   @unique
+  password String
+  role     Role    @default(user) // Can be "user" or "admin"
+  
+  // Relationships
+  events   Event[]   // One Admin can create Many Events
+  bookings Booking[] // <-- A user can have many bookings
+}
+
+model Event {
+  id       Int      @id @default(autoincrement()) // Primary Key
+  title    String
+  price    Decimal  //--Good for currency
+  date     DateTime
+  
+  // Foreign Key linking to the User (Admin) who created it
+  adminId  Int
+  admin    User     @relation(fields: [adminId], references: [id]) // <------------- IMP --
+  
+  // Relationships
+  seats    Seat[]   // One Event has Many Seats
+  bookings Booking[] // <--An event can have many bookings
+}
+
+model Seat {
+  id       Int      @id @default(autoincrement()) // Primary Key
+  seatNo   String   // Example: "A1", "B3"
+  status   String   @default("available") // Example: "available" or "booked"
+  
+  // --Foreign Key linking this seat to a specific Event
+  eventId  Int
+  event    Event    @relation(fields: [eventId], references: [id])
+  bookings Booking[] // <--A seat can be attached to a booking
+}
+
+
+// --->  BOOKING TABLE ---
+model Booking {
+  id        Int      @id @default(autoincrement()) //Booking ID (PK)
+  
+  // Who is booking?
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  
+  // What event?
+  eventId   Int
+  event     Event    @relation(fields: [eventId], references: [id])
+  
+  // Which exact seat?
+  seatId    Int
+  seat      Seat     @relation(fields: [seatId], references: [id])
+
+  payment   Payment?  // <--A booking can have one payment record
+}
+
+// ----->  PAYMENT TABLE ---
+model Payment {
+  id        Int      @id @default(autoincrement())
+  amount    Decimal
+  status    String   @default("pending") // e.g., "success" or "failed"
+  
+  bookingId Int      @unique // One payment per booking
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+
+  // --- RAZORPAY FIELDS ---
+  razorpayOrderId   String?  // Holds the order ID from Razorpay
+  razorpayPaymentId String?  // Holds the successful payment ID
+  razorpaySignature String?  // Holds the security signature
+}

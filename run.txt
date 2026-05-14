@@ -1,0 +1,22 @@
+run -- npm run start:dev 
+
+Ctrl + Shift + P -- Restart TS server
+
+
+{
+"title": "Spider-Man: Brand New Day",
+  "price": 500,
+  "date": "2026-05-01T18:00:00Z",
+  "adminId": 1,
+  "rows": 3,
+  "seatsPerRow": 5
+
+}
+
+
+Click Generate Test Key. You will get a Key Id and a Key Secret.
+
+
+
+
+
