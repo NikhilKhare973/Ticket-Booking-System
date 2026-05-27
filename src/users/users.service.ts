@@ -4,10 +4,12 @@ import {
   BadRequestException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+
 import { PrismaService } from '../prisma.service';
 import { JwtService } from '@nestjs/jwt';
+
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
 import { LoginDto } from './dto/login.dto';
 
 @Injectable()
@@ -18,58 +20,124 @@ export class UsersService {
   ) {}
 
   async create(data: CreateUserDto) {
-    return this.prisma.user.create({ data });
+    const newUser = await this.prisma.user.create({
+      data: data,
+    });
+
+    return newUser;
   }
 
   async findAllUsers() {
-    return this.prisma.user.findMany({
-      where: { role: 'user' },
+    const users = await this.prisma.user.findMany({
+      where: {
+        role: 'user',
+      },
+
       select: {
         id: true,
         name: true,
         email: true,
       },
     });
+
+    return users;
   }
 
   async findOne(id: number) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
-    if (!user) throw new NotFoundException(`User #${id} not found`);
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
     return user;
   }
 
   async update(id: number, data: UpdateUserDto) {
-    return this.prisma.user.update({ where: { id }, data });
+    const updatedUser = await this.prisma.user.update({
+      where: {
+        id: id,
+      },
+      data: data,
+    });
+
+    return updatedUser;
   }
 
   async remove(id: number) {
-    await this.prisma.user.delete({ where: { id } });
-    return { message: 'Deleted' };
+    await this.prisma.user.delete({
+      where: {
+        id: id,
+      },
+    });
+
+    return {
+      message: 'User deleted successfully',
+    };
   }
 
+  // Register user
   async registerUser(dto: CreateUserDto) {
+    // email already exists
     const existingUser = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: {
+        email: dto.email,
+      },
     });
-    if (existingUser) throw new BadRequestException('Email already in use');
 
-    // Force the role to be 'user'
-    return this.prisma.user.create({
-      data: { ...dto, role: 'user' },
+    if (existingUser) {
+      throw new BadRequestException('Email already exists');
+    }
+
+    // create user
+    const newUser = await this.prisma.user.create({
+      data: {
+        name: dto.name,
+        email: dto.email,
+        password: dto.password,
+        role: 'user',
+      },
     });
+
+    return newUser;
   }
 
   async loginUser(dto: LoginDto) {
+    // find user by email
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: {
+        email: dto.email,
+      },
     });
 
-    // Strict check: Must exist, password must match, MUST be a user
-    if (!user || user.password !== dto.password || user.role !== 'user') {
-      throw new UnauthorizedException('Invalid User credentials');
+    if (!user) {
+      throw new UnauthorizedException('User not found');
     }
 
-    const payload = { sub: user.id, email: user.email, role: user.role };
-    return { access_token: this.jwtService.sign(payload) };
+    if (user.password !== dto.password) {
+      throw new UnauthorizedException('Wrong password');
+    }
+
+    if (user.role !== 'user') {
+      throw new UnauthorizedException('Not a user');
+    }
+
+    // create jwt payload
+    const payload = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+    };
+
+    // generate token
+    const token = this.jwtService.sign(payload);
+
+    return {
+      access_token: token,
+    };
   }
 }

@@ -4,11 +4,13 @@ import {
   BadRequestException,
   NotFoundException,
 } from '@nestjs/common';
+
 import { PrismaService } from '../prisma.service';
 import { JwtService } from '@nestjs/jwt';
+
 import { CreateAdminDto } from './dto/create-admin.dto';
-import { LoginDto } from '../users/dto/login.dto'; // Reusing your DTO
-import { UpdateUserDto } from '../users/dto/update-user.dto';
+import { LoginDto } from '../users/dto/login.dto';
+import { UpdateAdminDto } from './dto/update-admin-dto';
 
 @Injectable()
 export class AdminService {
@@ -17,59 +19,120 @@ export class AdminService {
     private jwtService: JwtService,
   ) {}
 
-  // POST: Admin Registration
+  // Register new admin
   async registerAdmin(dto: CreateAdminDto) {
-    const existingAdmin = await this.prisma.user.findUnique({
-      where: { email: dto.email },
-    });
-    if (existingAdmin) throw new BadRequestException('Email already in use');
-
-    // Force the role to be 'admin'
-    return this.prisma.user.create({
-      data: { ...dto, role: 'admin' },
-    });
-  }
-
-  //  Admin Login  (Imp)
-  async loginAdmin(dto: LoginDto) {
-    const admin = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+    // check if email already exists
+    const adminExists = await this.prisma.user.findUnique({
+      where: {
+        email: dto.email,
+      },
     });
 
-    // Strict check: Must exist, password must match, MUST be an admin
-    if (!admin || admin.password !== dto.password || admin.role !== 'admin') {
-      throw new UnauthorizedException('Invalid Admin credentials');
+    if (adminExists) {
+      throw new BadRequestException('Email already exists');
     }
 
-    const payload = { sub: admin.id, email: admin.email, role: admin.role };
-    return { access_token: this.jwtService.sign(payload) };
+    // create admin
+    const newAdmin = await this.prisma.user.create({
+      data: {
+        name: dto.name,
+        email: dto.email,
+        password: dto.password,
+        role: 'admin',
+      },
+    });
+
+    return newAdmin;
+  }
+
+  async loginAdmin(dto: LoginDto) {
+    // find admin by email
+    const admin = await this.prisma.user.findUnique({
+      where: {
+        email: dto.email,
+      },
+    });
+
+    if (!admin) {
+      throw new UnauthorizedException('Admin not found');
+    }
+
+    // check
+    if (admin.password !== dto.password) {
+      throw new UnauthorizedException('Wrong password');
+    }
+
+    if (admin.role !== 'admin') {
+      throw new UnauthorizedException('Not an admin');
+    }
+
+    // create jwt token
+    const payload = {
+      id: admin.id,
+      email: admin.email,
+      role: admin.role,
+    };
+
+    const token = this.jwtService.sign(payload);
+
+    return {
+      access_token: token,
+    };
   }
 
   async findAllAdmins() {
-    return this.prisma.user.findMany({
-      where: { role: 'admin' },
+    const admins = await this.prisma.user.findMany({
+      where: {
+        role: 'admin',
+      },
+
       select: {
         id: true,
         name: true,
         email: true,
       },
     });
+
+    return admins;
   }
 
-  //
   async findOne(id: number) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
-    if (!user) throw new NotFoundException(`User #${id} not found`);
+    const user = await this.prisma.user.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
     return user;
   }
 
-  //
-  async update(id: number, data: UpdateUserDto) {
-    return this.prisma.user.update({ where: { id }, data });
+  async update(id: number, data: UpdateAdminDto) {
+    const updatedUser = await this.prisma.user.update({
+      where: {
+        id: id,
+      },
+      data: data,
+    });
+
+    return updatedUser;
   }
 
   async remove(id: number) {
-    await this.prisma.user.delete({ where: { id } });
-    return { message: 'Deleted' };
+    await this.prisma.user.delete({
+      where: {
+        id: id,
+      },
+    });
+
+    return {
+      message: 'User deleted successfully',
+    };
   }
 }
+
+// make this code look like beginner write it ,
+// just make beginner friendly code, and functionality not change(importent )

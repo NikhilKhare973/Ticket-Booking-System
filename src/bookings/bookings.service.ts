@@ -3,129 +3,165 @@ import {
   NotFoundException,
   BadRequestException,
 } from '@nestjs/common';
+
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class BookingsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prismaService: PrismaService) {}
 
-  // POST: Create multiple bookings at once
   async create(dto: CreateBookingDto) {
-    // ---> 1.Enforce the limit rule (you can only book up to 5 seats at a time) <-----
+    // Check seat limit
     if (dto.seatIds.length > 5) {
       throw new BadRequestException(
-        'You can only book a maximum of 5 seats at a time.',
-      );
-    }
-    if (dto.seatIds.length === 0) {
-      throw new BadRequestException(
-        'Please select at least one seat to decrementook.',
+        'You can only book maximum 5 seats at one time.',
       );
     }
 
-    // 2. Fetch all requested seats to make sure they exist
-    const seats = await this.prisma.seat.findMany({
-      where: { id: { in: dto.seatIds } },
+    if (dto.seatIds.length === 0) {
+      throw new BadRequestException('Please select at least one seat.');
+    }
+
+    // Find seats from database
+    const seats = await this.prismaService.seat.findMany({
+      where: {
+        id: {
+          in: dto.seatIds,
+        },
+      },
     });
 
     if (seats.length !== dto.seatIds.length) {
+      throw new BadRequestException('Some selected seats do not exist.');
+    }
+
+    // seats are already booked
+    const bookedSeats = seats.filter((seat) => {
+      return seat.status !== 'available';
+    });
+
+    if (bookedSeats.length > 0) {
+      const bookedSeatNumbers = bookedSeats
+        .map((seat) => {
+          return seat.seatNo;
+        })
+        .join(', ');
+
       throw new BadRequestException(
-        'One or more selected seats do not exist in the database.',
+        `These seats are already booked: ${bookedSeatNumbers}`,
       );
     }
 
-    // -----> 3.Check if any of them are already booked by someone else! <-----
-    const unavailableSeats = seats.filter(
-      (seat) => seat.status !== 'available',
-    );
-    if (unavailableSeats.length > 0) {
-      const badSeatNumbers = unavailableSeats.map((s) => s.seatNo).join(', ');
-      throw new BadRequestException(
-        `Sorry, the following seats are already booked: ${badSeatNumbers}`,
-      );
-    }
-
-    // -----> 4.The Database Transaction (All or Nothing!) <-----
-    // This safely updates the seats AND creates the booking records simultaneously
-    return this.prisma.$transaction(async (prisma) => {
-      //  *** A. Mark the seats as 'booked' ***
+    // Transaction starts here - update seat status and create booking records
+    return this.prismaService.$transaction(async (prisma) => {
+      // Update seats status
       await prisma.seat.updateMany({
-        where: { id: { in: dto.seatIds } },
-        data: { status: 'booked' },
+        where: {
+          id: {
+            in: dto.seatIds,
+          },
+        },
+        data: {
+          status: 'booked',
+        },
       });
 
-      // ***B. Create a booking receipt for each seat ***
-      const bookingData = dto.seatIds.map((seatId) => ({
-        userId: dto.userId,
-        eventId: dto.eventId,
-        seatId: seatId,
-      }));
+      // Create booking data
+      const bookingData = dto.seatIds.map((seatId) => {
+        return {
+          userId: dto.userId,
+          eventId: dto.eventId,
+          seatId: seatId,
+        };
+      });
 
+      // Save bookings
       await prisma.booking.createMany({
         data: bookingData,
       });
 
       return {
-        message: `Success! You have booked ${dto.seatIds.length} seats.`,
+        message: `Success! You booked ${dto.seatIds.length} seats.`,
       };
     });
   }
 
-  // GET ---> Find all bookings (include the user, event, and seat details)
   async findAll() {
-    return this.prisma.booking.findMany({
+    const bookings = await this.prismaService.booking.findMany({
       include: {
         user: true,
         event: true,
         seat: true,
       },
     });
+
+    return bookings;
   }
 
-  // GET -> Find a specific booking
   async findOne(id: number) {
-    const booking = await this.prisma.booking.findUnique({
-      where: { id },
-      include: { user: true, event: true, seat: true },
+    const booking = await this.prismaService.booking.findUnique({
+      where: {
+        id: id,
+      },
+      include: {
+        user: true,
+        event: true,
+        seat: true,
+      },
     });
-    if (!booking) throw new NotFoundException(`Booking #${id} not found`);
+
+    if (!booking) {
+      throw new NotFoundException(`Booking #${id} not found`);
+    }
+
     return booking;
   }
 
-  // PATCH -> Update a booking (e.g., changing the user or seat)
   async update(id: number, updateBookingDto: any) {
-    return this.prisma.booking.update({
-      where: { id },
+    const updatedBooking = await this.prismaService.booking.update({
+      where: {
+        id: id,
+      },
       data: updateBookingDto,
     });
+
+    return updatedBooking;
   }
 
-  // DELETE -> Cancel a booking
   async remove(id: number) {
-    //1. Find the booking to get the seat ID
     const booking = await this.findOne(id);
 
-    // 2.Make the seat "available" again!
-    await this.prisma.seat.update({
-      where: { id: booking.seatId },
-      data: { status: 'available' },
+    // Make seat available again
+    await this.prismaService.seat.update({
+      where: {
+        id: booking.seatId,
+      },
+      data: {
+        status: 'available',
+      },
     });
 
-    //3. Delete the booking
-    await this.prisma.booking.delete({ where: { id } });
-    return { message: `Booking #${id} successfully cancelled` };
+    await this.prismaService.booking.delete({
+      where: {
+        id: id,
+      },
+    });
+
+    return {
+      message: `Booking #${id} successfully cancelled`,
+    };
   }
 
   async findByUserEmail(email: string) {
-    // --->1. Ask Prisma to find bookings that match the email
-    const userBookings = await this.prisma.booking.findMany({
+    // Find bookings using email
+    const userBookings = await this.prismaService.booking.findMany({
       where: {
         user: {
-          email: email, //   Prisma to look inside the linked User table!
+          email: email,
         },
       },
-      // Include all the connected data we want to show the user
+
       include: {
         user: true,
         event: true,
@@ -134,13 +170,12 @@ export class BookingsService {
       },
     });
 
-    // --->2. Check if they actually have any tickets
     if (userBookings.length === 0) {
       throw new NotFoundException(`No tickets found for email: ${email}`);
     }
 
-    // --->3. Format the response so it looks like a clean, professional receipt
-    return userBookings.map((booking) => {
+    // Format response
+    const formattedBookings = userBookings.map((booking) => {
       return {
         ticketId: `TICKET-${booking.id}`,
         customerName: booking.user.name,
@@ -149,9 +184,11 @@ export class BookingsService {
         showTime: booking.event.date,
         seatNumber: booking.seat.seatNo,
 
-        amountPaid: booking.payment?.amount || 'Pending', // We use the "?" just in case they haven't paid yet!    <-----
+        amountPaid: booking.payment?.amount || 'Pending',
         paymentStatus: booking.payment?.status || 'No Payment Record',
       };
     });
+
+    return formattedBookings;
   }
 }

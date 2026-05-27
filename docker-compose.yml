@@ -9,7 +9,7 @@ services:
     environment:
       POSTGRES_USER: admin
       POSTGRES_PASSWORD: password123
-      POSTGRES_DB: ticket_booking
+      POSTGRES_DB: ticket_db
     volumes:
       - postgres-data:/var/lib/postgresql/data
 

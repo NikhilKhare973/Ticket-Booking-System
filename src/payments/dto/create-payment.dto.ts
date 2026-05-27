@@ -1,9 +1,9 @@
 import { ApiProperty } from '@nestjs/swagger';
 
-export class CreateOrderDto {
+export class CreatePaymentDto {
   @ApiProperty({ example: 1, description: 'The ID of the booking' })
   bookingId!: number;
 
-  @ApiProperty({ example: 5000, description: 'The total amount in INR' })
+  @ApiProperty({ example: 500, description: 'The total amount in INR' })
   amount!: number;
 }

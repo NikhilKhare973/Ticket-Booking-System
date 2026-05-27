@@ -5,42 +5,63 @@ import { PrismaService } from '../prisma.service';
 
 @Injectable()
 export class SeatsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prismaService: PrismaService) {}
 
-  // POST--> Create a new seat
   async create(createSeatDto: CreateSeatDto) {
-    return this.prisma.seat.create({
+    const newSeat = await this.prismaService.seat.create({
       data: createSeatDto,
     });
+
+    return newSeat;
   }
 
-  // GET--> Find all seats (and show which event they belong to!)
   async findAll() {
-    return this.prisma.seat.findMany({
-      include: { event: true },
+    const seats = await this.prismaService.seat.findMany({
+      include: {
+        event: true,
+      },
     });
+
+    return seats;
   }
 
-  // GET--> Find one seat
   async findOne(id: number) {
-    const seat = await this.prisma.seat.findUnique({
-      where: { id },
-      include: { event: true },
+    const seat = await this.prismaService.seat.findUnique({
+      where: {
+        id: id,
+      },
+      include: {
+        event: true,
+      },
     });
-    if (!seat) throw new NotFoundException(`Seat #${id} not found`);
+
+    if (!seat) {
+      throw new NotFoundException('Seat not found');
+    }
+
     return seat;
   }
 
-  // PATCH--> Update a seat (e.g., changing status to "booked")
   async update(id: number, updateSeatDto: UpdateSeatDto) {
-    return this.prisma.seat.update({
-      where: { id },
+    const updatedSeat = await this.prismaService.seat.update({
+      where: {
+        id: id,
+      },
       data: updateSeatDto,
     });
+
+    return updatedSeat;
   }
-  // DELETE--> Remove a seat
+
   async remove(id: number) {
-    await this.prisma.seat.delete({ where: { id } });
-    return { message: `Seat #${id} successfully deleted` };
+    await this.prismaService.seat.delete({
+      where: {
+        id: id,
+      },
+    });
+
+    return {
+      message: `Seat #${id} successfully deleted`,
+    };
   }
 }

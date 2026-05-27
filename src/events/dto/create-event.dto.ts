@@ -1,8 +1,10 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsDate } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class CreateEventDto {
   @ApiProperty({
-    example: 'Avengers: Endgame',
+    example: 'Taylor Swift Concert',
     description: 'Title of the event',
   })
   title!: string;
@@ -11,23 +13,25 @@ export class CreateEventDto {
   price!: number;
 
   @ApiProperty({
-    example: '2026-05-01T18:00:00Z',
+    example: '2026-12-31T20:00:00Z',
     description: 'Date and time',
   })
-  date!: string;
+  @Type(() => Date)
+  @IsDate()
+  date!: Date;
 
-  @ApiProperty({ example: 1, description: 'ID of the Admin creating this' })
+  @ApiProperty({ example: 2, description: 'ID of the Admin creating this' })
   adminId!: number;
 
   @ApiProperty({
-    example: 5,
+    example: 3,
     description: 'Number of rows (e.g., 5 means rows A through E)',
   })
   rows!: number;
 
   @ApiProperty({
-    example: 10,
-    description: 'Seats per row (e.g., 10 means seats 1 through 10)',
+    example: 5,
+    description: 'Seats per row (e.g., 5 means seats 1 through 5)',
   })
   seatsPerRow!: number;
 }

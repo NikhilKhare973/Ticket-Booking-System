@@ -1,118 +1,189 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 
 import { PrismaService } from '../prisma.service';
+
 import Razorpay from 'razorpay';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class PaymentsService {
+  // Create Razorpay object
   private razorpayInstance: Razorpay;
 
-  constructor(private prisma: PrismaService) {
+  constructor(private prismaService: PrismaService) {
+    // Initialize Razorpay
     this.razorpayInstance = new Razorpay({
-      key_id: 'rzp_test_SgvTgZz9wBKVoQ', // Your Razorpay Key ID -  key_id
-      key_secret: 'C596bzKItPRLND6pfh5fQs4z', // Your Razorpay Key Secret - key_secret
+      // Razorpay API Key ID
+      key_id: 'rzp_test_SgvTgZz9wBKVoQ',
+
+      // Razorpay Secret Key
+      key_secret: 'C596bzKItPRLND6pfh5fQs4z',
     });
   }
 
-  // 1.generate a payment link for a specific booking and amount <-----
+  // 1. CREATE PAYMENT LINK
+  // This function creates a payment link using Razorpay
+  // User will click this link to complete payment
   async createPaymentLink(bookingId: number, amount: number) {
     try {
-      const paymentLinkRequest = {
-        amount: amount * 100, // Convert to paise
+      // Create data object for Razorpay
+      const paymentLinkData = {
+        amount: amount * 100,
+
         currency: 'INR',
+
+        // User cannot pay partial amount
         accept_partial: false,
+
+        // Description shown on payment page
         description: `Payment for Ticket Booking #${bookingId}`,
-        reference_id: bookingId.toString(), // CRITICAL: This is how we know which booking paid later!
+
+        // **VERY IMPORTANT**
+        // We save bookingId here
+        // Later webhook uses this to identify booking
+        reference_id: bookingId.toString(),
+
+        // Dummy customer details
         customer: {
           name: 'Customer',
           email: 'customer@example.com',
           contact: '+919876543210',
         },
-        notify: { sms: false, email: false },
+
+        // Disable notifications
+        notify: {
+          sms: false,
+          email: false,
+        },
+
         reminder_enable: false,
-        // Where the user goes after paying successfully
-        callback_url: 'https://google.com',
+
+        // After successful payment user goes here
+        callback_url: 'https://www.youtube.com/',
         callback_method: 'get',
       };
 
-      // Ask Razorpay to create the link
+      // Ask Razorpay to generate payment link
       const paymentLink =
-        await this.razorpayInstance.paymentLink.create(paymentLinkRequest);
+        await this.razorpayInstance.paymentLink.create(paymentLinkData);
 
-      // Save a "pending" record in your database
-      await this.prisma.payment.create({
+      // Save payment in database as pending
+      await this.prismaService.payment.create({
         data: {
           amount: amount,
+
           bookingId: bookingId,
-          razorpayOrderId: paymentLink.id, // <---- We store the Link ID here *** (orders ID)** <<<<
+
+          // Save Razorpay payment link ID
+          razorpayOrderId: paymentLink.id,
+
+          // Payment not completed yet
           status: 'pending',
         },
       });
 
-      // Send the clickable URL back to the user!
+      // Send payment URL to frontend/user
       return {
         message: 'Payment link generated successfully',
+
         payment_url: paymentLink.short_url,
       };
     } catch (error) {
       console.log(error);
+
       throw new BadRequestException('Failed to generate payment link');
     }
   }
 
-  // 2. THE WEBHOOK (Razorpay calls this function automatically!)  ----- Razorpay sends data here
+  // 2. HANDLE WEBHOOK
+  // Razorpay automatically sends payment data here
+  // after payment success/failure
   async handleWebhook(body: any, signature: string) {
-    // ---- > 1.safety check: If there is no body, don't try to process it
+    // Safety check - If body or signature missing, ignore request
     if (!body || !signature) {
-      console.log('Received an empty or unsigned webhook request. Ignoring.');
-      return { status: 'ignored' };
+      console.log('Received empty webhook request');
+
+      return {
+        status: 'ignored',
+      };
     }
 
+    // Webhook secret
     const webhookSecret = 'MY_CUSTOM_WEBHOOK_SECRET_123';
 
-    // ----> 2. verify signature
-    const expectedSignature = crypto
+    // Verify webhook signature
+    // This checks if request really came from Razorpay
+    const generatedSignature = crypto
       .createHmac('sha256', webhookSecret)
       .update(JSON.stringify(body))
       .digest('hex');
 
-    if (expectedSignature !== signature) {
-      console.log('Signature Mismatch!');
+    // If signatures do not match
+    if (generatedSignature !== signature) {
+      console.log('Signature mismatch');
+
       throw new BadRequestException('Invalid Webhook Signature');
     }
 
-    // --->3.process sucessful payment webhook ( **** Handle webhook event: payment_link.paid **** )
+    // PAYMENT SUCCESS EVENT
+    // Razorpay sends this event when payment succeeds
     if (body.event === 'payment_link.paid') {
+      // Get payload data
       const payload = body.payload;
-      const paymentLinkData = payload.payment_link.entity;
-      const actualPaymentData = payload.payment.entity; // The actual payment info
 
-      const bookingId = parseInt(paymentLinkData.reference_id);
+      // Payment link information
+      const paymentLinkInfo = payload.payment_link.entity;
 
-      // ---** update database **---
-      await this.prisma.payment.updateMany({
-        where: { bookingId: bookingId },
+      // Real payment information
+      const paymentInfo = payload.payment.entity;
+
+      // Get bookingId from reference_id
+      const bookingId = parseInt(paymentLinkInfo.reference_id);
+
+      // Update payment in database
+      await this.prismaService.payment.updateMany({
+        where: {
+          bookingId: bookingId,
+        },
+
         data: {
+          // Payment successful
           status: 'success',
-          // We save the REAL payment ID (starts with pay_)
-          razorpayPaymentId: actualPaymentData.id,
-          // WE ADD THIS LINE TO SAVE THE SIGNATURE!
+
+          // Save actual Razorpay payment ID
+          razorpayPaymentId: paymentInfo.id,
+
+          // Save webhook signature
           razorpaySignature: signature,
         },
       });
 
-      console.log(
-        ` ✓ Webhook Success: Booking #${bookingId} is now fully PAID and Signed!`,
-      );
-      return { status: 'ok' };
+      console.log(`Booking #${bookingId} payment successful`);
+
+      return {
+        status: 'ok',
+      };
     }
 
-    return { status: 'ignored' };
+    // Ignore unknown events
+    return {
+      status: 'ignored',
+    };
   }
+
+  // 3. GET ALL PAYMENTS
   async findAll() {
-    return this.prisma.payment.findMany({
-      include: { booking: { include: { user: true, event: true } } },
+    const payments = await this.prismaService.payment.findMany({
+      include: {
+        booking: {
+          include: {
+            user: true,
+            event: true,
+          },
+        },
+      },
     });
+
+    return payments;
   }
 }

@@ -35,7 +35,7 @@ export class AdminGuard implements CanActivate {
         );
       }
 
-      return true; // Let them through!
+      return true;
     } catch {
       throw new UnauthorizedException('Invalid or expired token.');
     }

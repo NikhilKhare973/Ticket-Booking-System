@@ -14,13 +14,15 @@ import { UpdateEventDto } from './dto/update-event.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AdminGuard } from '../admin/admin.guard';
 
+import { ParseIntPipe } from '@nestjs/common';
+
 @ApiTags('Events')
 @Controller('events')
 export class EventsController {
   constructor(private readonly eventsService: EventsService) {}
 
   @Post()
-  @ApiBearerAuth() //tells Swagger this route needs a token
+  @ApiBearerAuth() //tells Swagger this route needs a token - looks
   @UseGuards(AdminGuard) // --->The actual bouncer that blocks bad users
   create(@Body() createEventDto: CreateEventDto) {
     return this.eventsService.create(createEventDto);
@@ -37,17 +39,20 @@ export class EventsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.eventsService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.eventsService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateEventDto: UpdateEventDto) {
-    return this.eventsService.update(+id, updateEventDto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateEventDto: UpdateEventDto,
+  ) {
+    return this.eventsService.update(id, updateEventDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.eventsService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.eventsService.remove(id);
   }
 }

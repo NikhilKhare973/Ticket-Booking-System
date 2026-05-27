@@ -1,6 +1,9 @@
+import { PartialType } from '@nestjs/swagger';
+import { IsEnum, IsOptional } from 'class-validator';
+import { Role } from '@prisma/client';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class CreateAdminDto {
+export class UpdateAdminDto {
   @ApiProperty({
     example: 'Nikhil Admin1',
     description: 'The full name of the admin',
@@ -24,5 +27,7 @@ export class CreateAdminDto {
     description: 'Role of the admin)',
     default: 'admin',
   })
-  role!: string;
+  @IsOptional()
+  @IsEnum(Role)
+  role?: Role; // Change 'string' to 'Role'
 }

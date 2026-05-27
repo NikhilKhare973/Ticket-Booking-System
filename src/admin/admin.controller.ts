@@ -11,7 +11,9 @@ import { AdminService } from './admin.service';
 import { ApiTags } from '@nestjs/swagger';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { LoginDto } from './dto/login.dto';
-import { UpdateUserDto } from '../users/dto/update-user.dto';
+import { UpdateAdminDto } from './dto/update-admin-dto';
+
+import { ParseIntPipe } from '@nestjs/common';
 
 @ApiTags('Admin') // This creates the "Admin" section in Swagger!
 @Controller('admin')
@@ -34,17 +36,20 @@ export class AdminController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.adminService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
-    return this.adminService.update(+id, updateUserDto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateAdminDto: UpdateAdminDto,
+  ) {
+    return this.adminService.update(id, updateAdminDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.adminService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.adminService.remove(id);
   }
 }

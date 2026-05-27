@@ -6,14 +6,16 @@ import {
   Patch,
   Param,
   Delete,
+  ParseIntPipe,
 } from '@nestjs/common';
+
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 
 @Controller('bookings')
 export class BookingsController {
-  constructor(private readonly bookingsService: BookingsService) {}
+  constructor(private bookingsService: BookingsService) {}
 
   @Post()
   create(@Body() createBookingDto: CreateBookingDto) {
@@ -26,22 +28,24 @@ export class BookingsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.bookingsService.findOne(+id);
+  findOne(@Param('id', ParseIntPipe) id: number) {
+    return this.bookingsService.findOne(id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateBookingDto: UpdateBookingDto) {
-    return this.bookingsService.update(+id, updateBookingDto);
+  update(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() updateBookingDto: UpdateBookingDto,
+  ) {
+    return this.bookingsService.update(id, updateBookingDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.bookingsService.remove(+id);
+  remove(@Param('id', ParseIntPipe) id: number) {
+    return this.bookingsService.remove(id);
   }
 
-  //Search tickets by email new thing added to the controller
-  // URL will look like: GET /bookings/search/nikhil@example.com
+  // Search bookings using user email
   @Get('search/:email')
   findByUserEmail(@Param('email') email: string) {
     return this.bookingsService.findByUserEmail(email);

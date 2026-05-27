@@ -9,13 +9,13 @@ export class CreateUserDto {
   name!: string;
 
   @ApiProperty({
-    example: 'nikhil@example.com',
+    example: 'nikhil@user1.com',
     description: 'A unique email address',
   })
   email!: string;
 
   @ApiProperty({
-    example: 'password123',
+    example: '123456',
     description: 'The user password',
   })
   password!: string;
