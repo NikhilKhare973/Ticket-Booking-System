@@ -29,7 +29,7 @@ export class AdminGuard implements CanActivate {
       });
 
       // --> Check if they are actually an admin!
-      if (payload.role !== 'admin') {
+      if (payload.role !== 'Admin') {
         throw new UnauthorizedException(
           'Access Denied: Only Admins can do this!',
         );

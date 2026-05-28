@@ -13,79 +13,86 @@ datasource db {
 }
 
 enum Role {
-  user
-  admin
+  User @map("user") // user = User - singal 
+  Admin @map("admin")
 }
 
 model User {
-  id       Int      @id @default(autoincrement()) // Primary Key
+  id       Int      @id @default(autoincrement()) // PK
   name     String
   email    String   @unique
   password String
-  role     Role    @default(user) // Can be "user" or "admin"
+  role     Role    @default(User) 
   
-  // Relationships
-  events   Event[]   // One Admin can create Many Events
-  bookings Booking[] // <-- A user can have many bookings
+  // one to many 
+  events   Event[]   
+  bookings Booking[] 
+
+  @@map("users") // store in this database 
 }
 
 model Event {
-  id       Int      @id @default(autoincrement()) // Primary Key
+  id       Int      @id @default(autoincrement()) 
   title    String
-  price    Decimal  //--Good for currency
+  price    Decimal  
   date     DateTime
   
-  // Foreign Key linking to the User (Admin) who created it
   adminId  Int
-  admin    User     @relation(fields: [adminId], references: [id]) // <------------- IMP --
+  Admin    User     @relation(fields: [adminId], references: [id]) 
   
-  // Relationships
-  seats    Seat[]   // One Event has Many Seats
-  bookings Booking[] // <--An event can have many bookings
+ 
+  seats    Seat[]   
+  bookings Booking[]
+
+  @@map("events") 
 }
 
 model Seat {
-  id       Int      @id @default(autoincrement()) // Primary Key
-  seatNo   String   // Example: "A1", "B3"
-  status   String   @default("available") // Example: "available" or "booked"
+  id       Int      @id @default(autoincrement()) 
+  seatNo   String   // - "A1", "B3"
+  status   String   @default("available") 
   
-  // --Foreign Key linking this seat to a specific Event
   eventId  Int
   event    Event    @relation(fields: [eventId], references: [id])
-  bookings Booking[] // <--A seat can be attached to a booking
+  bookings Booking[] 
+
+  @@map("seats")
 }
 
 
-// --->  BOOKING TABLE ---
 model Booking {
   id        Int      @id @default(autoincrement()) //Booking ID (PK)
   
-  // Who is booking?
+  
   userId    Int
   user      User     @relation(fields: [userId], references: [id])
   
-  // What event?
+
   eventId   Int
   event     Event    @relation(fields: [eventId], references: [id])
   
-  // Which exact seat?
+  
   seatId    Int
   seat      Seat     @relation(fields: [seatId], references: [id])
 
-  payment   Payment?  // <--A booking can have one payment record
+  payment   Payment?  // booking one payment record  
+
+  @@map("booking")
 }
 
-// ----->  PAYMENT TABLE ---
+
 model Payment {
   id        Int      @id @default(autoincrement())
   amount    Decimal
   status    String   @default("pending") // e.g., "success" or "failed"
   
-  bookingId Int      @unique // One payment per booking
+  bookingId Int      @unique // one payment per booking
   booking   Booking  @relation(fields: [bookingId], references: [id])
 
-  // --- RAZORPAY FIELDS ---
-  razorpayOrderId   String?  // Holds the order ID from Razorpay
-  razorpayPaymentId String?  // Holds the successful payment ID
-  razorpaySignature String?  // Holds the security signature
+  // --- razorpay  ---
+  razorpayOrderId   String?  // holds order ID from Razorpay
+  razorpayPaymentId String?  // holds the successful payment ID
+  razorpaySignature String?  // holds the security signature
+
+  @@map("payments")
 }

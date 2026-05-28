@@ -38,7 +38,7 @@ export class AdminService {
         name: dto.name,
         email: dto.email,
         password: dto.password,
-        role: 'admin',
+        role: 'Admin',
       },
     });
 
@@ -62,7 +62,7 @@ export class AdminService {
       throw new UnauthorizedException('Wrong password');
     }
 
-    if (admin.role !== 'admin') {
+    if (admin.role !== 'Admin') {
       throw new UnauthorizedException('Not an admin');
     }
 
@@ -83,7 +83,7 @@ export class AdminService {
   async findAllAdmins() {
     const admins = await this.prisma.user.findMany({
       where: {
-        role: 'admin',
+        role: 'Admin',
       },
 
       select: {

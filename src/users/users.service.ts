@@ -30,7 +30,7 @@ export class UsersService {
   async findAllUsers() {
     const users = await this.prisma.user.findMany({
       where: {
-        role: 'user',
+        role: 'User',
       },
 
       select: {
@@ -99,7 +99,7 @@ export class UsersService {
         name: dto.name,
         email: dto.email,
         password: dto.password,
-        role: 'user',
+        role: 'User',
       },
     });
 
@@ -122,7 +122,7 @@ export class UsersService {
       throw new UnauthorizedException('Wrong password');
     }
 
-    if (user.role !== 'user') {
+    if (user.role !== 'User') {
       throw new UnauthorizedException('Not a user');
     }
 

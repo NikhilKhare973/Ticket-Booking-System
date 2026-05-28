@@ -93,7 +93,7 @@ export class EventsService {
   async findAll() {
     const events = await this.prisma.event.findMany({
       include: {
-        admin: true,
+        Admin: true,
       },
     });
 
